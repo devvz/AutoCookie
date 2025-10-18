@@ -53,6 +53,13 @@ AC.init = function() {
 			AC.Game.UpdateMenu();
 			AC.Display.UpdateMenu();
 		}
+
+		var spawnBtn = function(){ try { AC.Display.createAutoclickerToggle(); } catch(e) { console.error(e); } };
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', spawnBtn, { once: true });
+		} else {
+			spawnBtn();
+		}
 		
 		// Notify the player that Auto Cookie has loaded.
 		if (Game.prefs.popups) {Game.Popup('Auto Cookie ' + AC.Version.Full + ' loaded.')} else {Game.Notify('Auto Cookie ' + AC.Version.Full + ' loaded.', '', '', 1, 1)}
@@ -669,24 +676,22 @@ AC.Display.addSetting = function(auto, setting) {
 	return frag;
 }
 
-// --- Autoclicker toggle button (top-left) ---
-
 AC.Display.createAutoclickerToggle = function () {
-	// avoid duplicate buttons
-	if (document.getElementById('ac-autoclicker-toggle')) {
-		AC.Display.updateAutoclickerToggleUI();
-		return;
-	}
+	// Remove any old one (avoid duplicates or wrong parent)
+	const old = document.getElementById('ac-autoclicker-toggle');
+	if (old && old.parentNode) old.parentNode.removeChild(old);
 
 	const btn = document.createElement('button');
 	btn.id = 'ac-autoclicker-toggle';
 	btn.textContent = 'Autoclicker: ON';
-	// basic, non-intrusive styling
+
+	// Super aggressive styling so it sits above CC UI and is clickable
 	Object.assign(btn.style, {
-		position: 'fixed',
-		top: '10px',
-		left: '10px',
-		zIndex: '999999',
+		position: 'fixed',              // default mount: window
+		top: '8px',
+		left: '8px',
+		zIndex: '2147483647',           // max 32-bit int-ish
+		pointerEvents: 'auto',
 		padding: '6px 10px',
 		border: '1px solid #444',
 		borderRadius: '6px',
@@ -696,13 +701,30 @@ AC.Display.createAutoclickerToggle = function () {
 		fontSize: '12px',
 		cursor: 'pointer',
 		boxShadow: '0 2px 0 rgba(0,0,0,0.3)',
+		userSelect: 'none',
 	});
+
 	btn.onclick = AC.toggleAutoclicker;
 
-	(document.body || document.documentElement).appendChild(btn);
+	// Prefer to mount *inside* the game's top bar so it’s guaranteed visible
+	// but without breaking if it's not there yet.
+	const topBar = document.getElementById('topBar');
+	if (topBar) {
+		// If we mount inside topBar, switch to absolute and keep a very high z
+		btn.style.position = 'absolute';
+		btn.style.top = '6px';
+		btn.style.left = '8px';
+		btn.style.zIndex = '2147483647';
+		topBar.style.position = topBar.style.position || 'relative';
+		topBar.appendChild(btn);
+	} else {
+		(document.body || document.documentElement).appendChild(btn);
+	}
+
 	AC.Display.updateAutoclickerToggleUI();
 };
 
+// Keep the button readable ON/OFF
 AC.Display.updateAutoclickerToggleUI = function () {
 	const btn = document.getElementById('ac-autoclicker-toggle');
 	if (!btn) return;
@@ -710,35 +732,25 @@ AC.Display.updateAutoclickerToggleUI = function () {
 		btn.textContent = 'Autoclicker: ON';
 		btn.style.background = '#2ecc71';
 		btn.style.color = '#000';
-		btn.title = 'Click to turn OFF';
+		btn.title = 'Click to turn OFF (or press Shift+A)';
 	} else {
 		btn.textContent = 'Autoclicker: OFF';
 		btn.style.background = '#e74c3c';
 		btn.style.color = '#fff';
-		btn.title = 'Click to turn ON';
+		btn.title = 'Click to turn ON (or press Shift+A)';
 	}
 };
 
-AC.toggleAutoclicker = function () {
-	AC.Settings.AutoclickerOn = AC.Settings.AutoclickerOn ? 0 : 1;
-
-	if (AC.Settings.AutoclickerOn) {
-		// (re)start with current Interval
-		if (AC.Autos['Autoclicker']) AC.Autos['Autoclicker'].run(false);
-		try { PlaySound('snd/tick.mp3'); } catch (e) {}
-		if (Game && Game.prefs && Game.prefs.popups) Game.Popup('Autoclicker ON'); else Game.Notify?.('Autoclicker ON','','',1,1);
-	} else {
-		// stop interval immediately
-		if (AC.Autos['Autoclicker']) {
-			AC.Autos['Autoclicker'].intvlID = clearInterval(AC.Autos['Autoclicker'].intvlID);
+// Hotkey: Shift + A toggles
+(function addACHotkeyOnce(){
+	if (AC._hotkeyBound) return;
+	AC._hotkeyBound = true;
+	window.addEventListener('keydown', function(e){
+		if (e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+			try { AC.toggleAutoclicker(); } catch(err) { console.error(err); }
 		}
-		try { PlaySound('snd/tick.mp3'); } catch (e) {}
-		if (Game && Game.prefs && Game.prefs.popups) Game.Popup('Autoclicker OFF'); else Game.Notify?.('Autoclicker OFF','','',1,1);
-	}
-
-	AC.Display.updateAutoclickerToggleUI();
-};
-
+	});
+})();	
 
 
 /*******************************************************************************
