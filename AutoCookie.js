@@ -115,8 +115,14 @@ AC.load = function(saveStr) {
 		AC.errorNotify('Your save data could not be loaded due to an error. Your raw save data has been logged on your browser\'s javascript console.');
 	}}
 	
-	// Start the automated actions.
+	// Start the automated actions
 	for (var auto in AC.Autos) if (!AC.Autos[auto].deprecated) AC.Autos[auto].run();
+	
+	// Make sure the Autoclicker stays OFF if the user setting is OFF
+	if (!AC.Settings.AutoclickerOn && AC.Autos['Autoclicker']) {
+	    AC.Autos['Autoclicker'].intvlID = clearInterval(AC.Autos['Autoclicker'].intvlID);
+	}
+
 	
 	// Randomly choose Auto Cookie's favorite cookie if it doesn't already have one, this is saved in the settings.
 	if (!AC.Settings.C) {
@@ -752,6 +758,44 @@ AC.Display.updateAutoclickerToggleUI = function () {
 	});
 })();	
 
+/**
+ * Toggle Autoclicker on/off
+ */
+AC.toggleAutoclicker = function () {
+	// Flip the saved state
+	AC.Settings.AutoclickerOn = AC.Settings.AutoclickerOn ? 0 : 1;
+
+	// Get the Autoclicker auto action
+	const auto = AC.Autos['Autoclicker'];
+	if (!auto) {
+		console.error("Error: 'Autoclicker' action not found in AC.Autos.");
+		return;
+	}
+
+	if (AC.Settings.AutoclickerOn) {
+		// Determine interval (use current slider value if > 0, otherwise default to 10ms)
+		var interval = (typeof auto.Interval === 'number' && auto.Interval > 0) ? auto.Interval : 10;
+
+		// Run immediately once, then start repeating
+		auto.run(true, interval);
+
+		if (Game && Game.prefs && Game.prefs.popups) Game.Popup('Autoclicker ON');
+		else if (Game && Game.Notify) Game.Notify('Autoclicker ON', '', '', 1, 1);
+	} else {
+		// Stop interval
+		auto.intvlID = clearInterval(auto.intvlID);
+
+		if (Game && Game.prefs && Game.prefs.popups) Game.Popup('Autoclicker OFF');
+		else if (Game && Game.Notify) Game.Notify('Autoclicker OFF', '', '', 1, 1);
+	}
+
+	// Update button visual state if present
+	if (AC.Display && AC.Display.updateAutoclickerToggleUI) {
+		AC.Display.updateAutoclickerToggleUI();
+	}
+};
+
+
 
 /*******************************************************************************
  * Settings
@@ -763,7 +807,7 @@ AC.Settings = {
 	'A': [],	// Settings of the automated actions. This is loaded from the save data when AC.load() is called and updated whenever AC.save() is called.
 	'C': '',	// Auto Cookie's favorite cookie.
 	'S': 1,	// Whether or not Auto Cookie's settings have been collapsed (0 means collapsed).
-	'AutoclickerOn': 1, // NEW: 1 = ON (default), 0 = OFF
+	'AutoclickerOn': 0, // NEW: 1 = ON (default), 0 = OFF
 }
 
 /*******************************************************************************
