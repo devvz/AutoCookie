@@ -669,38 +669,42 @@ AC.Display.addSetting = function(auto, setting) {
 	return frag;
 }
 
-// Create the physical toggle button (top-left).
+// --- Autoclicker toggle button (top-left) ---
+
 AC.Display.createAutoclickerToggle = function () {
-	// If it already exists, just update its visual state
-	if (l('ac-autoclicker-toggle')) {
+	// avoid duplicate buttons
+	if (document.getElementById('ac-autoclicker-toggle')) {
 		AC.Display.updateAutoclickerToggleUI();
 		return;
 	}
+
 	const btn = document.createElement('button');
 	btn.id = 'ac-autoclicker-toggle';
 	btn.textContent = 'Autoclicker: ON';
-	btn.style.position = 'fixed';
-	btn.style.top = '10px';
-	btn.style.left = '10px';
-	btn.style.zIndex = '999999'; // float above everything
-	btn.style.padding = '6px 10px';
-	btn.style.border = '1px solid #444';
-	btn.style.borderRadius = '6px';
-	btn.style.background = '#2ecc71';
-	btn.style.color = '#000';
-	btn.style.fontFamily = 'sans-serif';
-	btn.style.fontSize = '12px';
-	btn.style.cursor = 'pointer';
-	btn.style.boxShadow = '0 2px 0 rgba(0,0,0,0.3)';
+	// basic, non-intrusive styling
+	Object.assign(btn.style, {
+		position: 'fixed',
+		top: '10px',
+		left: '10px',
+		zIndex: '999999',
+		padding: '6px 10px',
+		border: '1px solid #444',
+		borderRadius: '6px',
+		background: '#2ecc71',
+		color: '#000',
+		fontFamily: 'sans-serif',
+		fontSize: '12px',
+		cursor: 'pointer',
+		boxShadow: '0 2px 0 rgba(0,0,0,0.3)',
+	});
 	btn.onclick = AC.toggleAutoclicker;
 
-	document.body.appendChild(btn);
+	(document.body || document.documentElement).appendChild(btn);
 	AC.Display.updateAutoclickerToggleUI();
 };
 
-// Update the visual ON/OFF state of the button.
 AC.Display.updateAutoclickerToggleUI = function () {
-	const btn = l('ac-autoclicker-toggle');
+	const btn = document.getElementById('ac-autoclicker-toggle');
 	if (!btn) return;
 	if (AC.Settings.AutoclickerOn) {
 		btn.textContent = 'Autoclicker: ON';
@@ -715,26 +719,26 @@ AC.Display.updateAutoclickerToggleUI = function () {
 	}
 };
 
-// Start/stop the autoclicker and persist the setting.
 AC.toggleAutoclicker = function () {
 	AC.Settings.AutoclickerOn = AC.Settings.AutoclickerOn ? 0 : 1;
 
-	// If turning on, start using current Interval
 	if (AC.Settings.AutoclickerOn) {
+		// (re)start with current Interval
 		if (AC.Autos['Autoclicker']) AC.Autos['Autoclicker'].run(false);
-		PlaySound('snd/tick.mp3');
-		if (Game.prefs.popups) Game.Popup('Autoclicker ON'); else Game.Notify('Autoclicker ON','','',1,1);
+		try { PlaySound('snd/tick.mp3'); } catch (e) {}
+		if (Game && Game.prefs && Game.prefs.popups) Game.Popup('Autoclicker ON'); else Game.Notify?.('Autoclicker ON','','',1,1);
 	} else {
-		// Turn off: clear the running interval
+		// stop interval immediately
 		if (AC.Autos['Autoclicker']) {
 			AC.Autos['Autoclicker'].intvlID = clearInterval(AC.Autos['Autoclicker'].intvlID);
 		}
-		PlaySound('snd/tick.mp3');
-		if (Game.prefs.popups) Game.Popup('Autoclicker OFF'); else Game.Notify('Autoclicker OFF','','',1,1);
+		try { PlaySound('snd/tick.mp3'); } catch (e) {}
+		if (Game && Game.prefs && Game.prefs.popups) Game.Popup('Autoclicker OFF'); else Game.Notify?.('Autoclicker OFF','','',1,1);
 	}
 
 	AC.Display.updateAutoclickerToggleUI();
 };
+
 
 
 /*******************************************************************************
