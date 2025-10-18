@@ -669,6 +669,74 @@ AC.Display.addSetting = function(auto, setting) {
 	return frag;
 }
 
+// Create the physical toggle button (top-left).
+AC.Display.createAutoclickerToggle = function () {
+	// If it already exists, just update its visual state
+	if (l('ac-autoclicker-toggle')) {
+		AC.Display.updateAutoclickerToggleUI();
+		return;
+	}
+	const btn = document.createElement('button');
+	btn.id = 'ac-autoclicker-toggle';
+	btn.textContent = 'Autoclicker: ON';
+	btn.style.position = 'fixed';
+	btn.style.top = '10px';
+	btn.style.left = '10px';
+	btn.style.zIndex = '999999'; // float above everything
+	btn.style.padding = '6px 10px';
+	btn.style.border = '1px solid #444';
+	btn.style.borderRadius = '6px';
+	btn.style.background = '#2ecc71';
+	btn.style.color = '#000';
+	btn.style.fontFamily = 'sans-serif';
+	btn.style.fontSize = '12px';
+	btn.style.cursor = 'pointer';
+	btn.style.boxShadow = '0 2px 0 rgba(0,0,0,0.3)';
+	btn.onclick = AC.toggleAutoclicker;
+
+	document.body.appendChild(btn);
+	AC.Display.updateAutoclickerToggleUI();
+};
+
+// Update the visual ON/OFF state of the button.
+AC.Display.updateAutoclickerToggleUI = function () {
+	const btn = l('ac-autoclicker-toggle');
+	if (!btn) return;
+	if (AC.Settings.AutoclickerOn) {
+		btn.textContent = 'Autoclicker: ON';
+		btn.style.background = '#2ecc71';
+		btn.style.color = '#000';
+		btn.title = 'Click to turn OFF';
+	} else {
+		btn.textContent = 'Autoclicker: OFF';
+		btn.style.background = '#e74c3c';
+		btn.style.color = '#fff';
+		btn.title = 'Click to turn ON';
+	}
+};
+
+// Start/stop the autoclicker and persist the setting.
+AC.toggleAutoclicker = function () {
+	AC.Settings.AutoclickerOn = AC.Settings.AutoclickerOn ? 0 : 1;
+
+	// If turning on, start using current Interval
+	if (AC.Settings.AutoclickerOn) {
+		if (AC.Autos['Autoclicker']) AC.Autos['Autoclicker'].run(false);
+		PlaySound('snd/tick.mp3');
+		if (Game.prefs.popups) Game.Popup('Autoclicker ON'); else Game.Notify('Autoclicker ON','','',1,1);
+	} else {
+		// Turn off: clear the running interval
+		if (AC.Autos['Autoclicker']) {
+			AC.Autos['Autoclicker'].intvlID = clearInterval(AC.Autos['Autoclicker'].intvlID);
+		}
+		PlaySound('snd/tick.mp3');
+		if (Game.prefs.popups) Game.Popup('Autoclicker OFF'); else Game.Notify('Autoclicker OFF','','',1,1);
+	}
+
+	AC.Display.updateAutoclickerToggleUI();
+};
+
+
 /*******************************************************************************
  * Settings
  ******************************************************************************/
@@ -679,6 +747,7 @@ AC.Settings = {
 	'A': [],	// Settings of the automated actions. This is loaded from the save data when AC.load() is called and updated whenever AC.save() is called.
 	'C': '',	// Auto Cookie's favorite cookie.
 	'S': 1,	// Whether or not Auto Cookie's settings have been collapsed (0 means collapsed).
+	'AutoclickerOn': 1, // NEW: 1 = ON (default), 0 = OFF
 }
 
 /*******************************************************************************
